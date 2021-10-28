@@ -19,14 +19,14 @@ tidy=TRUE, tidy.opts=list(width.cutoff=60), R.options=list(max.print=100))
 
 ## Data Wrangling, Exploration, Visualization
 
-### Name and EID here
+### Roshan Shaik!
 
 #### Introduction 
 
 Paragraph or two introducing your datasets and variables, why they are interesting to you, etc.
 
 ```{R}
-# read your datasets in here, e.g., with read_csv()
+#hello
 
 ```
 
