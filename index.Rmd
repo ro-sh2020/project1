@@ -19,73 +19,89 @@ tidy=TRUE, tidy.opts=list(width.cutoff=60), R.options=list(max.print=100))
 
 ## Data Wrangling, Exploration, Visualization
 
-### Roshan Shaik!
-
+### Roshan Shaik
 #### Introduction 
-
-Paragraph or two introducing your datasets and variables, why they are interesting to you, etc.
+Climate change has been a major topic of discussion among the scientific and political community in recent years. Numerous organizations have been trying to educate the public on environmental awareness and the many issues that are negatively affecting the Earth. Among those issues is air pollution, which is especially prominent in urban cities that are very populated. I used my old Biostats data for the first dataset, which looks into factors that may cause air pollution to fluctuate in different cities in the United States. The three variables that were collected in this dataset are population density, average annuall temperature, and AQI.  AQI is  is a numerical range of values that categorizes air safety levels. The second dataset is from a study of the healthiest cities in America. The researchers evaluated the overall healthiest cities using four variables: healthcare, food, fitness, green space. Combining these two datasets will allow us to see how air pollution affects the 'healthiness' of a city, and to what extent.   
 
 ```{R}
-#hello
-
+library(tidyverse)
+library(knitr)
+health <- read_csv("Sheet 2.csv")
+pollution <- read_csv("Sheet 1.csv")
+pollution <- pollution %>% rename(City = "Cities")
 ```
+
 
 #### Tidying: Reshaping
 
 If your datasets are tidy already, demonstrate that you can reshape data with pivot wider/longer here (e.g., untidy and then retidy). Alternatively, it may be easier to wait until the wrangling section so you can reshape your summary statistics. Note here if you are going to do this.
 
 ```{R}
-# your tidying code (if applicable; can also wait until wrangling section)
+pollution %>% pivot_wider(names_from = City, values_from = AQI) 
+
+wide2 <- health %>% pivot_wider(names_from = City, values_from = Healthcare)
+wide2 %>% pivot_longer(6:187, names_to = "City", values_to = "Healthcare") %>% head()
 ```
 
     
 #### Joining/Merging
 
 ```{R}
-# your joining code
+combined_data <- inner_join(pollution, health, by = "City")
+head(combined_data)
+nrow(health)
+nrow(pollution)
+nrow(combined_data)
 
-# your joining code
 ```
 
-Discussions of joining here. Feel encouraged to break up into more than once code chunk and discuss each in turn.
+An inner join was used to combine the two datasets by 'City'.  Originally, the 'health' dataset had 182 cities and the 'pollution' dataset had 60 cities.  After joining, the resulting dataset only contained 42 cities.  This is likely because the population dataset only consisted of cities that were classified as 'urban' (population of at least 50,000), while the health dataset had no such restrictions. There are 42 cities that appear in one dataset, but not the other. 
 
 ####  Wrangling
 
 ```{R}
-# your wrangling code
-
-# your wrangling code
-
-# your wrangling code
+combined_data <- combined_data %>% select(-`Overall Rank`)
+combined_data <- combined_data %>% rename(Total_Health_Score = "Total Score")
+combined_data <- combined_data %>% mutate(AQI_Category = case_when(AQI<=50 ~ "good", AQI>50 ~ "moderate"))
+```
+The combined data contained a variable 'Overall Rank', which ranks each city based on Health score.  However, since not all cities from the original 'health' dataset are present in the combined one, this variable would not make sense.
+```{R}
+combined_data <- combined_data %>% mutate(AQI_Category = str_replace(AQI_Category, "good", "Good"))
+combined_data <- combined_data %>% mutate(AQI_Category = str_replace(AQI_Category, "moderate", "Moderate"))
+combined_data %>% group_by(AQI_Category) %>% summarize(n()) %>% kable()
+combined_data %>% group_by(AQI_Category) %>% summarize(mean(Total_Health_Score)) %>% kable()
+combined_data %>% group_by(AQI_Category) %>% summarize(sd(Total_Health_Score))
+combined_data %>% filter(Average_Temp>59) %>% summarize(mean_total_health_score = mean(Total_Health_Score)) %>% kable()
+combined_data %>% filter(Average_Temp<59) %>% summarize(mean_total_health_score = mean(Total_Health_Score)) %>% kable()
+combined_data %>% arrange(desc(Total_Health_Score))
+combined_data
+combined_data %>% select(3:9) %>% summarize_all(mean)
+combined_data %>% select(3:9) %>% summarize_all(max)
+combined_data %>% select(3:9) %>% summarize_all(min)
+combined_data %>% select(3:9) %>% summarize_all(sd)
+combined_data %>% summarize_all(function(x) sum(is.na(x)))
+combined_data %>% pivot_wider(names_from = AQI_Category, values_from = Total_Health_Score)
 ```
 
-Your discussion of wrangling section here. Feel encouraged to break up into more than once code chunk and discuss each in turn.
+After summarizing all the data, we can see that there are 36 cities in the combined dataset that have an AQI of less than 50, which puts them in the 'good' air quality category. This category is satisfactory and air pollution poses little to no risk. 6 of the cities have an AQI of greater than 50, which puts them in the 'moderate' category. This category may pose a risk for some people.  The mean health score for 'Good' cities is 46.2, while the mean health score for 'Moderate' cities is 45.6.  Although we would have expected the health scores for the less polluted cities to be higher, the difference is not significant enough to confirm that. Therefore, we cannot make any conclusions on the effect of AQI on total health score.  However, there is a difference in health score based on average annual temperature. For cities that have a annual temperature higher than the mean of all cities (59), the mean total health score is 44.  For cities that have a annual temperature lower than 59, the mean total health score is 48.5.  So cities with a lower temperature seem to be generally healthier.  
 
 
 #### Visualizing
 
 ```{R}
-# your plot 1
+combined_data %>% ggplot(aes(AQI_Category, Total_Health_Score, fill=AQI_Category)) + geom_bar(stat = "summary", fun=mean) + xlab("Air Quality Index Category") + ylab("Total Health Score") + geom_errorbar(stat="summary", width=0.4) + ggtitle("AQI Category vs. Health Score") + theme(plot.title = element_text(hjust = 0.5)) + theme(plot.title = element_text(face = "bold")) + scale_fill_manual(values = c(Good="LightGreen",Moderate="LightYellow"))
 ```
 
-Your discussion of plot 1
+This barplot shows that the total health score is approximately the same for cities with 'good' air quality and cities with 'moderate' air quality.  In other words, there is no distinct difference in the healthiness of a city based on the AQI category. However, there is still a possibility of a trend or corellation that can only be seen in a scatterplot. 
 
 ```{R}
-# your plot 2
+combined_data %>% ggplot(aes(Population_Density,AQI)) + geom_point(aes(color=AQI_Category, size=1)) + xlab("Population Density") + ylab("Air Quality Index") + geom_smooth(method = "lm", color="green") + ggtitle("Population Density vs. AQI") + theme(plot.title = element_text(hjust = 0.5)) + theme(plot.title = element_text(face = "bold")) 
 ```
 
-Your discussion of plot 2
+This plot shows a positive relationship between population density and air quality index, which is consistent with my expectations. Cities that are more densely populated have a higher air quality index, showing that there is more pollution and the air quality is worse.  Cities that are less dense in terms of population have better air quality. 
 
 ```{R}
-# your plot 3
+combined_data %>% ggplot(aes(x=Population_Density, y=Total_Health_Score)) + geom_density2d_filled() + geom_jitter(size=0.5) + xlab("Population Density") + ylab("Total Health Score") + ggtitle("Population Density vs. Health Score") + theme(plot.title = element_text(hjust = 0.5)) + theme(plot.title = element_text(face = "bold"))
 ```
 
-Your discussion of plot 3
-
-#### Concluding Remarks
-
-If any!
-
-
-
-
+This density plot shows that most cities have a population density between 2000 and 3000 people/square mile.  The less densely populated cities also have a generally higher health score.  This matches up with the previous plot, since the less dense cities have less pollution. Therefore, those cities will also be healthier on average. 
